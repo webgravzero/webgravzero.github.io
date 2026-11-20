@@ -1,0 +1,1994 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>web grav zero</title>
+
+  <!-- Nebula Emoji Favicon -->
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌌</text></svg>" />
+
+  <!-- Tailwind CSS for minimalist floating URL & search inputs -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Matter.js 2D Rigid-Body Physics Engine -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
+
+  <!-- Google Fonts: Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+
+  <style>
+    * {
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background-color: #020205;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      overscroll-behavior: none;
+    }
+
+    /* Smooth, line-free black swirling cosmic nebula background */
+    #swirl-canvas {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 0;
+      pointer-events: none;
+      background-color: #020205;
+    }
+
+    /* Initial minimalist landing screen: centered logo & URL/search text box */
+    #landing-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 45;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      transition: opacity 0.4s ease;
+    }
+
+    @keyframes zeroFloat {
+      0%, 100% {
+        transform: translateY(0px);
+      }
+      50% {
+        transform: translateY(-5px);
+      }
+    }
+
+    .wg-logo-float {
+      animation: zeroFloat 5.5s ease-in-out infinite;
+    }
+
+    #landing-overlay.is-hidden {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    /* Minimal floating URL & search bar shown once a page is loaded */
+    #top-url-bar {
+      position: fixed;
+      top: 10px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 50;
+      width: 94%;
+      max-width: 600px;
+      transition: opacity 0.3s ease, transform 0.3s ease;
+    }
+
+    #top-url-bar.is-hidden,
+    #top-url-bar.is-minimized {
+      opacity: 0;
+      pointer-events: none;
+      transform: translate(-50%, -14px);
+    }
+
+    /* Compact floating arrow pill to restore the minimized search bar */
+    #expand-bar-btn {
+      position: fixed;
+      top: 10px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 50;
+      transition: opacity 0.25s ease, transform 0.25s ease, background-color 0.2s ease;
+    }
+
+    #expand-bar-btn.is-hidden {
+      opacity: 0;
+      pointer-events: none;
+      transform: translate(-50%, -10px) scale(0.92);
+    }
+
+    /* Clean subtle spinner inside the text box */
+    .input-spinner {
+      width: 16px;
+      height: 16px;
+      border: 2px solid rgba(255, 255, 255, 0.16);
+      border-top-color: rgba(255, 255, 255, 0.9);
+      border-radius: 50%;
+      animation: spinLoader 0.75s linear infinite;
+    }
+
+    @keyframes spinLoader {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    /* Full-screen isolated webpage container rendering the exact website HTML, CSS & banners */
+    #page-frame {
+      position: fixed;
+      top: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 100%;
+      height: 100%;
+      border: none;
+      z-index: 10;
+      display: none;
+      opacity: 0;
+      pointer-events: none;
+      background-color: #020205;
+      transition: opacity 0.28s ease, width 0.25s ease, background-color 0.25s ease;
+    }
+
+    /* Unified Top-Level Touch & Mouse Physics Interaction Layer */
+    #interaction-layer {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 20;
+      display: none;
+      touch-action: none;
+      user-select: none;
+      -webkit-user-select: none;
+      cursor: grab;
+    }
+
+    #interaction-layer.is-grabbing {
+      cursor: grabbing;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Smooth Line-Free Black Swirling Space Background -->
+  <canvas id="swirl-canvas"></canvas>
+
+  <!-- Minimalist Landing Screen: Logo & Centered URL/Search Text Box -->
+  <div id="landing-overlay">
+    <!-- web grav zero Cosmic Brand Wordmark -->
+    <div class="wg-logo-float mb-6 flex flex-col items-center select-none pointer-events-none">
+      <span class="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-white via-indigo-200 to-sky-300 bg-clip-text text-transparent tracking-[-0.03em]">
+        web grav zero
+      </span>
+    </div>
+
+    <form id="landing-form" class="relative w-full max-w-md flex items-center">
+      <input
+        id="landing-input"
+        type="text"
+        enterkeyhint="go"
+        placeholder="Search or enter any URL..."
+        autocomplete="off"
+        autocapitalize="off"
+        autocorrect="off"
+        spellcheck="false"
+        autofocus
+        class="w-full bg-white/[0.04] hover:bg-white/[0.06] focus:bg-black/85 text-white placeholder-white/40 text-sm sm:text-base text-center px-11 py-3.5 rounded-2xl border border-white/15 backdrop-blur-xl shadow-[0_8px_40px_rgba(0,0,0,0.85)] focus:outline-none focus:border-white/40 focus:ring-4 focus:ring-white/[0.06] transition-all duration-200"
+      />
+
+      <div id="landing-spinner" class="hidden absolute right-4 pointer-events-none">
+        <div class="input-spinner"></div>
+      </div>
+    </form>
+  </div>
+
+  <!-- Minimal Top URL & Search Bar (Shown once a page is loaded) -->
+  <div id="top-url-bar" class="is-hidden">
+    <form id="url-form" class="relative w-full flex items-center">
+      <!-- Reset Pill inside the left edge of the URL box -->
+      <div class="absolute left-2 z-20 flex items-center">
+        <button
+          type="button"
+          id="top-reset-btn"
+          title="Reset all elements back to their original places"
+          class="flex items-center gap-1 px-2.5 py-1.5 rounded-full bg-white/[0.09] hover:bg-white/[0.18] active:scale-95 text-white/85 hover:text-white text-[10px] font-medium transition cursor-pointer"
+        >
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path>
+            <path d="M3 3v5h5"></path>
+          </svg>
+          <span>Reset</span>
+        </button>
+      </div>
+
+      <input
+        id="url-input"
+        type="text"
+        enterkeyhint="go"
+        placeholder="Search or enter any URL..."
+        autocomplete="off"
+        autocapitalize="off"
+        autocorrect="off"
+        spellcheck="false"
+        class="w-full bg-neutral-950/85 hover:bg-neutral-950/90 focus:bg-neutral-950/95 text-white placeholder-white/40 text-xs sm:text-sm text-left sm:text-center pl-24 pr-11 py-2.5 rounded-full border border-white/15 backdrop-blur-xl shadow-[0_8px_30px_rgba(0,0,0,0.5)] focus:outline-none focus:border-white/40 focus:ring-2 focus:ring-white/15 transition-all duration-200"
+      />
+
+      <div id="top-spinner" class="hidden absolute right-3.5 pointer-events-none">
+        <div class="input-spinner"></div>
+      </div>
+
+      <!-- Minimize Search Bar into an Arrow Button -->
+      <button
+        type="button"
+        id="minimize-bar-btn"
+        title="Minimize search bar"
+        aria-label="Minimize search bar"
+        class="absolute right-2 z-20 flex items-center justify-center w-7 h-7 rounded-full bg-white/[0.08] hover:bg-white/[0.18] active:scale-95 text-white/80 hover:text-white transition cursor-pointer"
+      >
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+          <path d="m18 15-6-6-6 6"></path>
+        </svg>
+      </button>
+    </form>
+  </div>
+
+  <!-- Minimized Search Bar Arrow Pill -->
+  <button
+    type="button"
+    id="expand-bar-btn"
+    title="Show search bar"
+    aria-label="Show search bar"
+    class="is-hidden flex items-center justify-center w-10 h-8 rounded-full bg-neutral-950/85 hover:bg-neutral-900/95 active:scale-95 text-white/85 hover:text-white border border-white/15 backdrop-blur-xl shadow-[0_8px_24px_rgba(0,0,0,0.5)] cursor-pointer"
+  >
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <path d="m6 9 6 6 6-6"></path>
+    </svg>
+  </button>
+
+  <!-- Full-Page Isolated Webpage Container (Renders exact website HTML, CSS, banners & images) -->
+  <iframe id="page-frame" sandbox="allow-same-origin" title="web grav zero Live Page"></iframe>
+
+  <!-- Unified Touch & Mouse Physics Capture Layer -->
+  <div id="interaction-layer"></div>
+
+  <script>
+    /**
+     * web grav zero — Zero-Gravity Website Playground
+     * - Opens on a smooth, line-free black swirling cosmic nebula with the bold gradient
+     *   "web grav zero" logo and a centered search/URL bar with auto device detection.
+     * - Fetches and renders the actual website (hydrated HTML, stylesheets, @imports, fonts,
+     *   hero banners, navigation bars, inline SVG logos, and images) edge-to-edge without a white flash.
+     * - Gravity is permanently 0 from the very first millisecond: elements stay in their natural
+     *   layout until touched, dragged, flung, or collided with, then glide weightlessly in 360° zero-G.
+     */
+    (function () {
+      'use strict';
+
+      // ==========================================
+      // 1. DOM REFERENCES & APPLICATION STATE
+      // ==========================================
+      const swirlCanvas = document.getElementById('swirl-canvas');
+      const swirlCtx = swirlCanvas.getContext('2d');
+      const pageFrame = document.getElementById('page-frame');
+      const interactionLayer = document.getElementById('interaction-layer');
+
+      const landingOverlay = document.getElementById('landing-overlay');
+      const landingForm = document.getElementById('landing-form');
+      const landingInput = document.getElementById('landing-input');
+      const landingSpinner = document.getElementById('landing-spinner');
+
+      const topUrlBar = document.getElementById('top-url-bar');
+      const urlForm = document.getElementById('url-form');
+      const urlInput = document.getElementById('url-input');
+      const topSpinner = document.getElementById('top-spinner');
+      const topResetBtn = document.getElementById('top-reset-btn');
+      const minimizeBarBtn = document.getElementById('minimize-bar-btn');
+      const expandBarBtn = document.getElementById('expand-bar-btn');
+
+      // Application & Physics State (Permanent Zero-Gravity)
+      const MIN_FLOAT_SPEED = 0.45;
+      const MAX_FLOAT_SPEED = 6.5;
+      let isBarMinimized = false;
+      let hasLaunchedPage = false;
+      let isResetting = false;
+      let mountGeneration = 0;
+      let spaceLaunchRafId = 0;
+      let currentUrl = '';
+      let currentDisplayText = '';
+      let lastMountedHtml = '';
+      let lastMountedBaseUrl = '';
+      let deviceMode = detectDeviceMode(); // Auto-detected 'mobile' | 'desktop'
+      let frameOffsetX = 0;
+
+      let pageItems = []; // Array of { body, el, placeholder, origLeft, origTop, width, height, isBoxElement, detached, lastRenderX, lastRenderY, lastRenderAngle }
+      let walls = [];
+      const pendingDetachItems = new Set();
+      const activePointers = new Map(); // pointerId -> { item, constraint, x, y, samples, moved }
+
+      // ==========================================
+      // 2. DEVICE DETECTION & RESPONSIVE PROFILE
+      // ==========================================
+      function detectDeviceMode() {
+        const isSmallViewport = window.innerWidth <= 768;
+        const isCoarsePointer = window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
+        return (isSmallViewport || isCoarsePointer) ? 'mobile' : 'desktop';
+      }
+
+      function getDeviceProfile() {
+        const vw = window.innerWidth;
+        const vh = window.innerHeight;
+        if (deviceMode === 'mobile') {
+          const frameWidth = Math.min(vw, 430);
+          return {
+            mode: 'mobile',
+            frameWidth,
+            frameHeight: vh
+          };
+        }
+        return {
+          mode: 'desktop',
+          frameWidth: vw,
+          frameHeight: vh
+        };
+      }
+
+      function applyDeviceProfileLayout() {
+        const profile = getDeviceProfile();
+        frameOffsetX = Math.max(0, Math.round((window.innerWidth - profile.frameWidth) * 0.5));
+        pageFrame.style.width = `${profile.frameWidth}px`;
+        pageFrame.style.height = `${profile.frameHeight}px`;
+      }
+
+      // ==========================================
+      // 3. MATTER.JS ZERO-GRAVITY ENGINE SETUP
+      // ==========================================
+      const { Engine, World, Bodies, Body, Constraint, Events } = Matter;
+
+      const engine = Engine.create({
+        positionIterations: 12,
+        velocityIterations: 10,
+        constraintIterations: 4
+      });
+      engine.gravity.x = 0;
+      engine.gravity.y = 0;
+      engine.gravity.scale = 0;
+
+      // Collision categories prevent resting elements from colliding with each other
+      const CAT_WALL = 0x0001;
+      const CAT_DYNAMIC = 0x0002;
+      const CAT_RESTING = 0x0004;
+
+      function createBoundaryWalls() {
+        if (walls.length > 0) {
+          World.remove(engine.world, walls);
+          walls = [];
+        }
+
+        const profile = getDeviceProfile();
+        const left = frameOffsetX;
+        const right = frameOffsetX + profile.frameWidth;
+        const top = 0;
+        const bottom = window.innerHeight;
+        const thickness = 180;
+
+        const wallOpts = {
+          isStatic: true,
+          restitution: 0.55,
+          friction: 0.16,
+          frictionStatic: 0.2,
+          slop: 0.02,
+          collisionFilter: {
+            category: CAT_WALL,
+            mask: CAT_DYNAMIC
+          }
+        };
+
+        walls = [
+          // Top wall
+          Bodies.rectangle((left + right) * 0.5, top - thickness * 0.5, profile.frameWidth + thickness * 2, thickness, wallOpts),
+          // Bottom wall
+          Bodies.rectangle((left + right) * 0.5, bottom + thickness * 0.5, profile.frameWidth + thickness * 2, thickness, wallOpts),
+          // Left wall
+          Bodies.rectangle(left - thickness * 0.5, (top + bottom) * 0.5, thickness, window.innerHeight + thickness * 2, wallOpts),
+          // Right wall
+          Bodies.rectangle(right + thickness * 0.5, (top + bottom) * 0.5, thickness, window.innerHeight + thickness * 2, wallOpts)
+        ];
+
+        World.add(engine.world, walls);
+      }
+
+      function clearPhysicsWorld() {
+        if (spaceLaunchRafId) {
+          cancelAnimationFrame(spaceLaunchRafId);
+          spaceLaunchRafId = 0;
+        }
+        for (const ptr of activePointers.values()) {
+          if (ptr.constraint) {
+            World.remove(engine.world, ptr.constraint);
+          }
+        }
+        activePointers.clear();
+        pendingDetachItems.clear();
+        if (pageItems.length > 0) {
+          const bodiesToRemove = pageItems.map((it) => it.body);
+          World.remove(engine.world, bodiesToRemove);
+          pageItems = [];
+        }
+        createBoundaryWalls();
+      }
+
+      // ==========================================
+      // 4. PIXEL-ACCURATE HITBOX & DETACHMENT LOGIC
+      // ==========================================
+      function preserveDescendantComputedStyles(rootEl, win) {
+        const snapshotProps = [
+          'boxSizing',
+          'display',
+          'flexDirection',
+          'alignItems',
+          'justifyContent',
+          'gap',
+          'fontFamily',
+          'fontSize',
+          'fontWeight',
+          'fontStyle',
+          'lineHeight',
+          'letterSpacing',
+          'textTransform',
+          'textDecoration',
+          'textAlign',
+          'color',
+          'backgroundColor',
+          'backgroundImage',
+          'backgroundSize',
+          'backgroundPosition',
+          'backgroundRepeat',
+          'borderTop',
+          'borderRight',
+          'borderBottom',
+          'borderLeft',
+          'borderRadius',
+          'boxShadow',
+          'paddingTop',
+          'paddingRight',
+          'paddingBottom',
+          'paddingLeft',
+          'opacity',
+          'fill',
+          'stroke'
+        ];
+
+        const targets = [rootEl, ...rootEl.querySelectorAll('*')];
+        for (let i = 0; i < targets.length; i++) {
+          const node = targets[i];
+          if (!(node instanceof win.HTMLElement || node instanceof win.SVGElement)) continue;
+          try {
+            const cs = win.getComputedStyle(node);
+            for (let p = 0; p < snapshotProps.length; p++) {
+              const prop = snapshotProps[p];
+              const val = cs[prop];
+              if (val && val !== '') {
+                node.style[prop] = val;
+              }
+            }
+          } catch (_) {
+            // Ignore cross-realm style read edge cases
+          }
+        }
+      }
+
+      function measureExactElementBox(el, win) {
+        const layoutRect = el.getBoundingClientRect();
+        const tag = el.tagName ? el.tagName.toUpperCase() : '';
+        const cs = win.getComputedStyle(el);
+
+        const isMedia = tag === 'IMG' || tag === 'SVG' || tag === 'VIDEO' || tag === 'CANVAS' || tag === 'PICTURE';
+        const isFormControl = tag === 'INPUT' || tag === 'BUTTON' || tag === 'SELECT' || tag === 'TEXTAREA';
+        const bgColor = cs.backgroundColor || '';
+        const hasBackground = (bgColor !== '' && bgColor !== 'transparent' && bgColor !== 'rgba(0, 0, 0, 0)') ||
+          (cs.backgroundImage && cs.backgroundImage !== 'none');
+        const hasBorder = (parseFloat(cs.borderTopWidth) > 0 && cs.borderTopStyle !== 'none') ||
+          (parseFloat(cs.borderRightWidth) > 0 && cs.borderRightStyle !== 'none') ||
+          (parseFloat(cs.borderBottomWidth) > 0 && cs.borderBottomStyle !== 'none') ||
+          (parseFloat(cs.borderLeftWidth) > 0 && cs.borderLeftStyle !== 'none');
+        const isFlexOrGrid = cs.display.includes('flex') || cs.display.includes('grid');
+
+        // Plain inline text nodes shrink-wrap tightly around glyph rectangles so text hitboxes match characters
+        if (!isMedia && !isFormControl && !hasBackground && !hasBorder && !isFlexOrGrid) {
+          try {
+            const range = el.ownerDocument.createRange();
+            range.selectNodeContents(el);
+            const rects = range.getClientRects();
+            if (rects && rects.length > 0) {
+              let minL = Infinity;
+              let minT = Infinity;
+              let maxR = -Infinity;
+              let maxB = -Infinity;
+              for (let i = 0; i < rects.length; i++) {
+                const r = rects[i];
+                if (r.width < 1 || r.height < 1) continue;
+                if (r.left < minL) minL = r.left;
+                if (r.top < minT) minT = r.top;
+                if (r.right > maxR) maxR = r.right;
+                if (r.bottom > maxB) maxB = r.bottom;
+              }
+              if (minL < maxR && minT < maxB) {
+                const padL = parseFloat(cs.paddingLeft) || 0;
+                const padR = parseFloat(cs.paddingRight) || 0;
+                const padT = parseFloat(cs.paddingTop) || 0;
+                const padB = parseFloat(cs.paddingBottom) || 0;
+                const isSingleLine = rects.length === 1;
+                const rawGlyphW = isSingleLine ? ((maxR - minL) + padL + padR + 2) : (layoutRect.width + 2);
+                const glyphW = Math.min(layoutRect.width + 2, rawGlyphW);
+                const glyphH = Math.min(layoutRect.height + 2, (maxB - minT) + padT + padB + 2);
+                if (glyphW >= 6 && glyphH >= 6) {
+                  return {
+                    left: Math.max(layoutRect.left, minL - padL),
+                    top: Math.max(layoutRect.top, minT - padT),
+                    width: glyphW,
+                    height: glyphH,
+                    isBoxElement: false,
+                    isSingleLine
+                  };
+                }
+              }
+            }
+          } catch (_) {
+            // Fall back to layout bounding box
+          }
+        }
+
+        return {
+          left: layoutRect.left,
+          top: layoutRect.top,
+          width: layoutRect.width,
+          height: layoutRect.height,
+          isBoxElement: true,
+          isSingleLine: false
+        };
+      }
+
+      function computeBalancedDensity(colliderW, colliderH) {
+        const area = Math.max(100, colliderW * colliderH);
+        const balancedMass = Math.pow(area, 0.58) * 0.04;
+        return balancedMass / area;
+      }
+
+      function buildDynamicBodyForBox(cx, cy, w, h) {
+        // Tiny 2px inward collider inset ensures flush side-by-side DOM elements never overlap at detach
+        const colliderW = Math.max(8, w - 2);
+        const colliderH = Math.max(8, h - 2);
+        return Bodies.rectangle(cx, cy, colliderW, colliderH, {
+          isStatic: false,
+          density: computeBalancedDensity(colliderW, colliderH),
+          restitution: 0.48,
+          friction: 0.18,
+          frictionStatic: 0.22,
+          frictionAir: 0.0035,
+          slop: 0.02,
+          collisionFilter: {
+            category: CAT_DYNAMIC,
+            mask: CAT_WALL | CAT_DYNAMIC | CAT_RESTING
+          }
+        });
+      }
+
+      function detachItemInPlace(item) {
+        if (!item || item.detached) return;
+
+        const el = item.el;
+        const doc = el.ownerDocument;
+        const win = doc.defaultView;
+        if (!win) return;
+
+        // Re-measure exact live position right before detaching so there is zero jump
+        const liveBox = measureExactElementBox(el, win);
+        const w = Math.max(8, liveBox.width);
+        const h = Math.max(8, liveBox.height);
+        const cx = frameOffsetX + liveBox.left + w * 0.5;
+        const cy = liveBox.top + h * 0.5;
+
+        item.width = w;
+        item.height = h;
+        item.origLeft = liveBox.left;
+        item.origTop = liveBox.top;
+
+        // Insert invisible spacer in original flow so sibling elements do NOT collapse/reflow
+        if (el.parentNode && !item.placeholder) {
+          const placeholder = doc.createElement('span');
+          const cs = win.getComputedStyle(el);
+          placeholder.style.display = cs.display === 'inline' ? 'inline-block' : cs.display;
+          placeholder.style.width = `${w}px`;
+          placeholder.style.height = `${h}px`;
+          placeholder.style.margin = cs.margin;
+          placeholder.style.visibility = 'hidden';
+          placeholder.style.pointerEvents = 'none';
+          placeholder.setAttribute('aria-hidden', 'true');
+          el.parentNode.insertBefore(placeholder, el);
+          item.placeholder = placeholder;
+        }
+
+        // Preserve computed typography/colors before detaching out of parent cascade
+        preserveDescendantComputedStyles(el, win);
+
+        if (liveBox.isSingleLine) {
+          el.style.whiteSpace = 'nowrap';
+        }
+
+        el.style.boxSizing = 'border-box';
+        el.style.position = 'fixed';
+        el.style.left = '0px';
+        el.style.top = '0px';
+        el.style.right = 'auto';
+        el.style.bottom = 'auto';
+        el.style.margin = '0px';
+        el.style.width = `${w}px`;
+        el.style.height = `${h}px`;
+        el.style.minWidth = `${w}px`;
+        el.style.maxWidth = `${w}px`;
+        el.style.minHeight = `${h}px`;
+        el.style.maxHeight = `${h}px`;
+        el.style.transformOrigin = '50% 50%';
+        el.style.willChange = 'transform';
+        el.style.zIndex = '1000';
+
+        // Replace static resting collider with dynamic rigid body at identical coordinates
+        if (item.body) {
+          World.remove(engine.world, item.body);
+        }
+        const dynamicBody = buildDynamicBodyForBox(cx, cy, w, h);
+        dynamicBody.pageItem = item;
+        item.body = dynamicBody;
+        item.detached = true;
+        World.add(engine.world, dynamicBody);
+
+        const initialX = (cx - frameOffsetX) - w * 0.5;
+        const initialY = cy - h * 0.5;
+        el.style.transform = `translate3d(${initialX.toFixed(2)}px, ${initialY.toFixed(2)}px, 0) rotate(0rad)`;
+        item.lastRenderX = initialX;
+        item.lastRenderY = initialY;
+        item.lastRenderAngle = 0;
+      }
+
+      function flushPendingDetachments() {
+        if (pendingDetachItems.size === 0) return;
+        for (const item of pendingDetachItems) {
+          detachItemInPlace(item);
+        }
+        pendingDetachItems.clear();
+      }
+
+      function enforceViewportContainmentAndSpeedCap() {
+        const profile = getDeviceProfile();
+        const leftBound = frameOffsetX;
+        const rightBound = frameOffsetX + profile.frameWidth;
+        const topBound = 0;
+        const bottomBound = window.innerHeight;
+        const maxSpeed = 16;
+        const maxAngVel = 0.075;
+
+        for (let i = 0; i < pageItems.length; i++) {
+          const item = pageItems[i];
+          if (!item.detached) continue;
+
+          const body = item.body;
+          const speed = Math.hypot(body.velocity.x, body.velocity.y);
+
+          if (speed > maxSpeed) {
+            const scale = maxSpeed / speed;
+            Body.setVelocity(body, { x: body.velocity.x * scale, y: body.velocity.y * scale });
+          }
+
+          if (Math.abs(body.angularVelocity) > maxAngVel) {
+            Body.setAngularVelocity(body, Math.sign(body.angularVelocity) * maxAngVel);
+          }
+
+          // Smooth zero-G rotational damping so spinning elements settle gracefully
+          Body.setAngularVelocity(body, body.angularVelocity * 0.985);
+
+          // Safety guard: keep center inside viewport walls
+          const margin = 4;
+          let clampedX = body.position.x;
+          let clampedY = body.position.y;
+          let vx = body.velocity.x;
+          let vy = body.velocity.y;
+          let needsClamp = false;
+
+          if (clampedX < leftBound + margin) {
+            clampedX = leftBound + margin;
+            vx = Math.abs(vx) * 0.55;
+            needsClamp = true;
+          } else if (clampedX > rightBound - margin) {
+            clampedX = rightBound - margin;
+            vx = -Math.abs(vx) * 0.55;
+            needsClamp = true;
+          }
+
+          if (clampedY < topBound + margin) {
+            clampedY = topBound + margin;
+            vy = Math.abs(vy) * 0.55;
+            needsClamp = true;
+          } else if (clampedY > bottomBound - margin) {
+            clampedY = bottomBound - margin;
+            vy = -Math.abs(vy) * 0.55;
+            needsClamp = true;
+          }
+
+          if (needsClamp) {
+            Body.setPosition(body, { x: clampedX, y: clampedY });
+            Body.setVelocity(body, { x: vx, y: vy });
+          }
+        }
+      }
+
+      function queueRestingContactDetachments(pairs) {
+        for (let i = 0; i < pairs.length; i++) {
+          const pair = pairs[i];
+          const itemA = pair.bodyA.pageItem;
+          const itemB = pair.bodyB.pageItem;
+
+          if (itemA && itemB) {
+            if (itemA.detached && !itemB.detached) {
+              // Suppress static-wall rebound on this substep and wake itemB cleanly before the next substep
+              pair.isActive = false;
+              pendingDetachItems.add(itemB);
+            } else if (itemB.detached && !itemA.detached) {
+              pair.isActive = false;
+              pendingDetachItems.add(itemA);
+            }
+          }
+        }
+      }
+
+      Events.on(engine, 'collisionStart', function (event) {
+        queueRestingContactDetachments(event.pairs);
+      });
+
+      Events.on(engine, 'collisionActive', function (event) {
+        queueRestingContactDetachments(event.pairs);
+      });
+
+      // ==========================================
+      // 5. UNIFIED POINTER & TOUCH GRAB / FLING
+      // ==========================================
+      function clampPointerToArena(clientX, clientY) {
+        const profile = getDeviceProfile();
+        const pad = 6;
+        const minX = frameOffsetX + pad;
+        const maxX = frameOffsetX + profile.frameWidth - pad;
+        const minY = pad;
+        const maxY = window.innerHeight - pad;
+        return {
+          x: Math.max(minX, Math.min(maxX, clientX)),
+          y: Math.max(minY, Math.min(maxY, clientY))
+        };
+      }
+
+      function isPointInsideItem(item, px, py) {
+        if (item.detached) {
+          const body = item.body;
+          const dx = px - body.position.x;
+          const dy = py - body.position.y;
+          const cos = Math.cos(-body.angle);
+          const sin = Math.sin(-body.angle);
+          const localX = dx * cos - dy * sin;
+          const localY = dx * sin + dy * cos;
+          const halfW = item.width * 0.5 + 4;
+          const halfH = item.height * 0.5 + 4;
+          return Math.abs(localX) <= halfW && Math.abs(localY) <= halfH;
+        }
+
+        const left = frameOffsetX + item.origLeft - 3;
+        const right = frameOffsetX + item.origLeft + item.width + 3;
+        const top = item.origTop - 3;
+        const bottom = item.origTop + item.height + 3;
+        return px >= left && px <= right && py >= top && py <= bottom;
+      }
+
+      function findItemAtPoint(clientX, clientY) {
+        // Check detached floating items in reverse order (topmost z-order first)
+        for (let i = pageItems.length - 1; i >= 0; i--) {
+          const item = pageItems[i];
+          if (item.detached && isPointInsideItem(item, clientX, clientY)) {
+            return item;
+          }
+        }
+        // Check resting items (smallest area wins if nested)
+        let bestResting = null;
+        let bestArea = Infinity;
+        for (let i = pageItems.length - 1; i >= 0; i--) {
+          const item = pageItems[i];
+          if (!item.detached && isPointInsideItem(item, clientX, clientY)) {
+            const area = item.width * item.height;
+            if (area < bestArea) {
+              bestArea = area;
+              bestResting = item;
+            }
+          }
+        }
+        return bestResting;
+      }
+
+      function handleGrabStart(pointerId, clientX, clientY, isMouse) {
+        const hitItem = findItemAtPoint(clientX, clientY);
+        if (!hitItem) return false;
+
+        detachItemInPlace(hitItem);
+
+        const body = hitItem.body;
+        Body.setVelocity(body, { x: 0, y: 0 });
+        Body.setAngularVelocity(body, body.angularVelocity * 0.25);
+
+        const clamped = clampPointerToArena(clientX, clientY);
+        const relX = clamped.x - body.position.x;
+        const relY = clamped.y - body.position.y;
+        const cos = Math.cos(-body.angle);
+        const sin = Math.sin(-body.angle);
+        const pointB = {
+          x: relX * cos - relY * sin,
+          y: relX * sin + relY * cos
+        };
+
+        // Tuned per-substep spring-damper constraint allows smooth 1:1 follow and non-jittery contact pushes
+        const constraint = Constraint.create({
+          pointA: { x: clamped.x, y: clamped.y },
+          bodyB: body,
+          pointB,
+          stiffness: 0.16,
+          damping: 0.18,
+          length: 0
+        });
+        World.add(engine.world, constraint);
+
+        const now = performance.now();
+        activePointers.set(pointerId, {
+          item: hitItem,
+          constraint,
+          startX: clamped.x,
+          startY: clamped.y,
+          x: clamped.x,
+          y: clamped.y,
+          moved: false,
+          isMouse,
+          samples: [{ x: clamped.x, y: clamped.y, t: now }]
+        });
+
+        interactionLayer.classList.add('is-grabbing');
+        return true;
+      }
+
+      function handleGrabMove(pointerId, clientX, clientY) {
+        const ptr = activePointers.get(pointerId);
+        if (!ptr) return;
+
+        const clamped = clampPointerToArena(clientX, clientY);
+        ptr.x = clamped.x;
+        ptr.y = clamped.y;
+        if (Math.hypot(clamped.x - ptr.startX, clamped.y - ptr.startY) > 6) {
+          ptr.moved = true;
+        }
+
+        if (ptr.constraint) {
+          ptr.constraint.pointA.x = clamped.x;
+          ptr.constraint.pointA.y = clamped.y;
+        }
+
+        const now = performance.now();
+        ptr.samples.push({ x: clamped.x, y: clamped.y, t: now });
+        while (ptr.samples.length > 6 || (ptr.samples.length > 1 && now - ptr.samples[0].t > 90)) {
+          ptr.samples.shift();
+        }
+      }
+
+      function handleGrabEnd(pointerId) {
+        const ptr = activePointers.get(pointerId);
+        if (!ptr) return;
+
+        activePointers.delete(pointerId);
+        if (activePointers.size === 0) {
+          interactionLayer.classList.remove('is-grabbing');
+        }
+
+        if (ptr.constraint) {
+          World.remove(engine.world, ptr.constraint);
+        }
+
+        const body = ptr.item.body;
+        if (!body) return;
+
+        let releaseVx = body.velocity.x;
+        let releaseVy = body.velocity.y;
+
+        if (ptr.samples.length >= 2) {
+          const first = ptr.samples[0];
+          const last = ptr.samples[ptr.samples.length - 1];
+          const dtMs = Math.max(8, last.t - first.t);
+          // Convert px/ms into Matter.js px/step (16.67ms per nominal step)
+          const stepVx = ((last.x - first.x) / dtMs) * 16.67 * 0.45;
+          const stepVy = ((last.y - first.y) / dtMs) * 16.67 * 0.45;
+          if (Math.hypot(stepVx, stepVy) > 0.35) {
+            releaseVx = stepVx;
+            releaseVy = stepVy;
+          }
+        }
+
+        // If the user simply tapped/clicked without dragging, impart a gentle zero-G float impulse
+        if (!ptr.moved && Math.hypot(releaseVx, releaseVy) < MIN_FLOAT_SPEED) {
+          const angle = Math.random() * Math.PI * 2;
+          const driftSpeed = 1.1 + Math.random() * 1.1;
+          releaseVx = Math.cos(angle) * driftSpeed;
+          releaseVy = Math.sin(angle) * driftSpeed;
+          Body.setAngularVelocity(body, (Math.random() - 0.5) * 0.025);
+        }
+
+        const speed = Math.hypot(releaseVx, releaseVy);
+        if (speed > MAX_FLOAT_SPEED) {
+          const scale = MAX_FLOAT_SPEED / speed;
+          releaseVx *= scale;
+          releaseVy *= scale;
+        }
+
+        Body.setVelocity(body, { x: releaseVx, y: releaseVy });
+      }
+
+      interactionLayer.addEventListener('pointerdown', (e) => {
+        if (e.button !== undefined && e.button !== 0 && e.pointerType === 'mouse') return;
+        const grabbed = handleGrabStart(e.pointerId, e.clientX, e.clientY, e.pointerType === 'mouse');
+        if (grabbed) {
+          try {
+            interactionLayer.setPointerCapture(e.pointerId);
+          } catch (_) {}
+          e.preventDefault();
+        }
+      });
+
+      interactionLayer.addEventListener('pointermove', (e) => {
+        if (!activePointers.has(e.pointerId)) return;
+        handleGrabMove(e.pointerId, e.clientX, e.clientY);
+        e.preventDefault();
+      });
+
+      interactionLayer.addEventListener('pointerup', (e) => {
+        if (!activePointers.has(e.pointerId)) return;
+        handleGrabEnd(e.pointerId);
+        try {
+          interactionLayer.releasePointerCapture(e.pointerId);
+        } catch (_) {}
+      });
+
+      interactionLayer.addEventListener('pointercancel', (e) => {
+        if (!activePointers.has(e.pointerId)) return;
+        handleGrabEnd(e.pointerId);
+      });
+
+      // Spacebar launches all resting elements gently into zero gravity
+      function launchAllElementsInZeroG() {
+        if (!hasLaunchedPage || pageItems.length === 0) return;
+        if (spaceLaunchRafId) cancelAnimationFrame(spaceLaunchRafId);
+
+        let idx = 0;
+        const batchSize = 18;
+
+        function launchBatch() {
+          const end = Math.min(pageItems.length, idx + batchSize);
+          for (; idx < end; idx++) {
+            const item = pageItems[idx];
+            if (!item.detached) {
+              detachItemInPlace(item);
+              const angle = Math.random() * Math.PI * 2;
+              const speed = 0.8 + Math.random() * 1.8;
+              Body.setVelocity(item.body, {
+                x: Math.cos(angle) * speed,
+                y: Math.sin(angle) * speed
+              });
+              Body.setAngularVelocity(item.body, (Math.random() - 0.5) * 0.03);
+            }
+          }
+          if (idx < pageItems.length) {
+            spaceLaunchRafId = requestAnimationFrame(launchBatch);
+          } else {
+            spaceLaunchRafId = 0;
+          }
+        }
+
+        spaceLaunchRafId = requestAnimationFrame(launchBatch);
+      }
+
+      window.addEventListener('keydown', (e) => {
+        if (e.code === 'Space' && document.activeElement !== landingInput && document.activeElement !== urlInput) {
+          e.preventDefault();
+          launchAllElementsInZeroG();
+        }
+      });
+
+      // ==========================================
+      // 6. WEBPAGE DOM ELEMENT EXTRACTION
+      // ==========================================
+      function collectInteractiveElements(doc, win) {
+        if (!doc || !doc.body) return [];
+        const profile = getDeviceProfile();
+        const maxW = profile.frameWidth * 0.94;
+        const maxH = window.innerHeight * 0.86;
+
+        const candidates = doc.body.querySelectorAll(
+          'a, button, input, select, textarea, img, svg, video, canvas, h1, h2, h3, h4, h5, h6, p, li, span, label, blockquote, pre, code, figure, article, div, td, th, dt, dd, time, figcaption, summary, address, [role="button"], [role="link"]'
+        );
+
+        const accepted = [];
+
+        for (let i = 0; i < candidates.length; i++) {
+          if (accepted.length >= 180) break;
+          const el = candidates[i];
+          const tag = el.tagName.toUpperCase();
+          if (tag === 'SCRIPT' || tag === 'STYLE' || tag === 'NOSCRIPT' || tag === 'META' || tag === 'LINK') continue;
+
+          // Skip container tags that hold child block/interactive/media elements so leaf items move independently
+          if (
+            (tag === 'DIV' || tag === 'LI' || tag === 'P' || tag === 'SPAN' || tag === 'ARTICLE' || tag === 'FIGURE' || tag === 'TD' || tag === 'TH') &&
+            el.querySelector('a, button, input, select, textarea, img, svg, video, canvas, h1, h2, h3, h4, h5, h6, p, ul, ol, table, form, article, section, nav, header, footer')
+          ) {
+            continue;
+          }
+
+          // Split oversized card-wrapper <a> tags into individual inner media/text hitboxes
+          if (
+            tag === 'A' &&
+            el.querySelector('img, svg, h1, h2, h3, h4, p, div')
+          ) {
+            const probeRect = el.getBoundingClientRect();
+            if (probeRect.width * probeRect.height > 42000) {
+              continue;
+            }
+          }
+
+          // For generic DIV wrappers, only select leaf text/badge blocks (avoid empty layout spacers)
+          if (tag === 'DIV') {
+            const hasDirectText = Array.from(el.childNodes).some(
+              (n) => n.nodeType === 3 && n.textContent && n.textContent.trim().length > 0
+            );
+            if (!hasDirectText && el.children.length > 0) {
+              continue;
+            }
+          }
+
+          // Skip empty non-media elements
+          const isMedia = tag === 'IMG' || tag === 'SVG' || tag === 'VIDEO' || tag === 'CANVAS';
+          const isInput = tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA';
+          if (!isMedia && !isInput && (!el.textContent || el.textContent.trim().length === 0)) {
+            continue;
+          }
+
+          const cs = win.getComputedStyle(el);
+          if (cs.display === 'none' || cs.visibility === 'hidden' || parseFloat(cs.opacity) < 0.05) {
+            continue;
+          }
+
+          const exactBox = measureExactElementBox(el, win);
+          if (exactBox.width < 10 || exactBox.height < 10) continue;
+          if (exactBox.width > maxW && exactBox.height > maxH) continue;
+
+          // Keep elements primarily within the initial visible viewport
+          if (exactBox.top > window.innerHeight * 1.15 || exactBox.top + exactBox.height < -20) {
+            continue;
+          }
+
+          // Deduplicate nested or overlapping sibling elements
+          let isDuplicate = false;
+          for (let j = 0; j < accepted.length; j++) {
+            const existing = accepted[j];
+            if (existing.el.contains(el) || el.contains(existing.el)) {
+              isDuplicate = true;
+              break;
+            }
+            const rA = existing.exactBox;
+            const rB = exactBox;
+            const overlapW = Math.max(0, Math.min(rA.left + rA.width, rB.left + rB.width) - Math.max(rA.left, rB.left));
+            const overlapH = Math.max(0, Math.min(rA.top + rA.height, rB.top + rB.height) - Math.max(rA.top, rB.top));
+            const overlapArea = overlapW * overlapH;
+            const minArea = Math.min(rA.width * rA.height, rB.width * rB.height);
+            if (minArea > 0 && overlapArea / minArea > 0.08) {
+              isDuplicate = true;
+              break;
+            }
+          }
+
+          if (!isDuplicate) {
+            accepted.push({ el, exactBox });
+          }
+        }
+
+        return accepted;
+      }
+
+      function createRestingBodyForBox(cx, cy, w, h) {
+        const colliderW = Math.max(8, w - 2);
+        const colliderH = Math.max(8, h - 2);
+        return Bodies.rectangle(cx, cy, colliderW, colliderH, {
+          isStatic: true,
+          isSensor: false,
+          restitution: 0.48,
+          friction: 0.18,
+          slop: 0.02,
+          collisionFilter: {
+            category: CAT_RESTING,
+            mask: CAT_DYNAMIC
+          }
+        });
+      }
+
+      function syncAllRestingHitboxes() {
+        const doc = pageFrame.contentDocument;
+        const win = pageFrame.contentWindow;
+        if (!doc || !win) return;
+
+        for (let i = 0; i < pageItems.length; i++) {
+          const item = pageItems[i];
+          if (item.detached || !item.el || !item.el.isConnected) continue;
+
+          const updated = measureExactElementBox(item.el, win);
+          if (updated.width < 8 || updated.height < 8) continue;
+
+          const movedOrResized =
+            Math.abs(updated.left - item.origLeft) > 1 ||
+            Math.abs(updated.top - item.origTop) > 1 ||
+            Math.abs(updated.width - item.width) > 1 ||
+            Math.abs(updated.height - item.height) > 1;
+
+          if (movedOrResized) {
+            World.remove(engine.world, item.body);
+            item.origLeft = updated.left;
+            item.origTop = updated.top;
+            item.width = updated.width;
+            item.height = updated.height;
+            const newCx = frameOffsetX + updated.left + updated.width * 0.5;
+            const newCy = updated.top + updated.height * 0.5;
+            const newBody = createRestingBodyForBox(newCx, newCy, updated.width, updated.height);
+            newBody.pageItem = item;
+            item.body = newBody;
+            World.add(engine.world, newBody);
+          }
+        }
+      }
+
+      function createPhysicsItemForElement(el, exactBox) {
+        const w = Math.max(8, exactBox.width);
+        const h = Math.max(8, exactBox.height);
+        const cx = frameOffsetX + exactBox.left + w * 0.5;
+        const cy = exactBox.top + h * 0.5;
+
+        const body = createRestingBodyForBox(cx, cy, w, h);
+        const item = {
+          body,
+          el,
+          placeholder: null,
+          origLeft: exactBox.left,
+          origTop: exactBox.top,
+          width: w,
+          height: h,
+          isBoxElement: exactBox.isBoxElement,
+          detached: false,
+          lastRenderX: exactBox.left,
+          lastRenderY: exactBox.top,
+          lastRenderAngle: 0
+        };
+        body.pageItem = item;
+        World.add(engine.world, body);
+        pageItems.push(item);
+
+        // Sync resting colliders if an image finishes decoding after initial scan
+        if (el.tagName && el.tagName.toUpperCase() === 'IMG' && !el.complete) {
+          el.addEventListener('load', () => {
+            syncAllRestingHitboxes();
+          }, { once: true });
+        }
+
+        return item;
+      }
+
+      // ==========================================
+      // 7. HYDRATED WEBSITE RENDERING (NO PROXY)
+      // ==========================================
+      function escapeHtml(str) {
+        return String(str || '')
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;');
+      }
+
+      function normalizeInputToTarget(rawInput) {
+        const trimmed = (rawInput || '').trim();
+        if (!trimmed) return null;
+
+        const looksLikeUrl =
+          /^https?:\/\//i.test(trimmed) ||
+          (!trimmed.includes(' ') && /^[a-z0-9-]+(\.[a-z0-9-]+)+([/?#:].*)?$/i.test(trimmed));
+
+        if (looksLikeUrl) {
+          const hasProtocol = /^https?:\/\//i.test(trimmed);
+          return {
+            url: trimmed,
+            baseUrl: hasProtocol ? trimmed : `https://${trimmed}`,
+            displayText: trimmed,
+            isSearch: false,
+            query: ''
+          };
+        }
+
+        const searchUrl = `https://duckduckgo.com/?q=${encodeURIComponent(trimmed)}`;
+        return {
+          url: searchUrl,
+          baseUrl: searchUrl,
+          displayText: trimmed,
+          isSearch: true,
+          query: trimmed
+        };
+      }
+
+      async function fetchWithTimeout(resource, options, timeoutMs) {
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), timeoutMs);
+        try {
+          const response = await fetch(resource, {
+            ...options,
+            signal: controller.signal
+          });
+          clearTimeout(timer);
+          return response;
+        } catch (err) {
+          clearTimeout(timer);
+          throw err;
+        }
+      }
+
+      function extractHtmlFromResponseText(rawText) {
+        if (!rawText || typeof rawText !== 'string') return '';
+        const trimmed = rawText.trim();
+        if (!trimmed) return '';
+
+        // Handle JSON-wrapped response if returned
+        if (trimmed.startsWith('{')) {
+          try {
+            const parsed = JSON.parse(trimmed);
+            if (parsed && parsed.data) {
+              if (typeof parsed.data.html === 'string' && parsed.data.html.trim()) {
+                return parsed.data.html;
+              }
+              if (typeof parsed.data.content === 'string' && /<[a-z][\s\S]*>/i.test(parsed.data.content)) {
+                return parsed.data.content;
+              }
+            }
+          } catch (_) {
+            // Not JSON, treat as raw HTML
+          }
+        }
+
+        return rawText;
+      }
+
+      function isValidHydratedHtml(html) {
+        if (!html || typeof html !== 'string') return false;
+        const trimmed = html.trim();
+        if (trimmed.length < 80) return false;
+        if (/<title>\s*(Just a moment\.\.\.|Attention Required!|522: Connection timed out|502 Bad Gateway|403 Forbidden)\s*<\/title>/i.test(trimmed)) {
+          return false;
+        }
+        if (!/<(html|body|div|p|h1|h2|a|span|main|article|section|header|nav|img|svg|table|form)\b/i.test(trimmed)) {
+          return false;
+        }
+
+        // Strip scripts, styles, noscript blocks, and tags to verify actual rendered content exists (not an empty SPA shell)
+        const visibleText = trimmed
+          .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, ' ')
+          .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, ' ')
+          .replace(/<noscript\b[^<]*(?:(?!<\/noscript>)<[^<]*)*<\/noscript>/gi, ' ')
+          .replace(/<[^>]+>/g, ' ')
+          .replace(/\s+/g, ' ')
+          .trim();
+
+        const hasMedia = /<(img|svg|video|canvas|input|button)\b/i.test(
+          trimmed.replace(/<noscript\b[^<]*(?:(?!<\/noscript>)<[^<]*)*<\/noscript>/gi, '')
+        );
+
+        // Reject pages whose only content is a "JavaScript is required / disabled" error screen
+        if (
+          visibleText.length < 260 &&
+          /(enable javascript|javascript is (disabled|required)|requires javascript|without javascript|browser is not supported)/i.test(visibleText)
+        ) {
+          return false;
+        }
+
+        return visibleText.length >= 35 || hasMedia;
+      }
+
+      function extractMetaRefreshUrl(html, baseUrl) {
+        const match = html.match(/<meta[^>]+http-equiv\s*=\s*["']?refresh["']?[^>]+content\s*=\s*["'][^"']*url\s*=\s*([^"'\s>]+)["'][^>]*>/i);
+        if (!match || !match[1]) return null;
+        try {
+          return new URL(match[1].replace(/&amp;/g, '&'), baseUrl).href;
+        } catch (_) {
+          return null;
+        }
+      }
+
+      async function fetchHydratedFromJina(targetUrl, resolvedBaseUrl, extraHeaders) {
+        const readerUrl = `https://r.jina.ai/${targetUrl}`;
+        const res = await fetchWithTimeout(
+          readerUrl,
+          {
+            method: 'GET',
+            headers: {
+              'X-Return-Format': 'html',
+              ...(extraHeaders || {})
+            }
+          },
+          22000
+        );
+
+        if (!res.ok) {
+          throw new Error(`HTTP ${res.status}`);
+        }
+
+        const rawText = await res.text();
+        const html = extractHtmlFromResponseText(rawText);
+
+        // Follow meta-refresh redirects automatically instead of rendering a blank redirect stub
+        const refreshUrl = extractMetaRefreshUrl(html, resolvedBaseUrl || targetUrl);
+        if (refreshUrl && refreshUrl !== resolvedBaseUrl && refreshUrl !== targetUrl) {
+          return fetchHydratedFromJina(refreshUrl, refreshUrl, extraHeaders);
+        }
+
+        if (!isValidHydratedHtml(html)) {
+          throw new Error('Empty or JS-only shell returned');
+        }
+
+        return {
+          html,
+          resolvedUrl: resolvedBaseUrl || targetUrl
+        };
+      }
+
+      async function fetchReaderMarkdownAsHtml(targetUrl, resolvedBaseUrl) {
+        const readerUrl = `https://r.jina.ai/${targetUrl}`;
+        const res = await fetchWithTimeout(
+          readerUrl,
+          {
+            method: 'GET',
+            headers: {
+              'X-Return-Format': 'markdown'
+            }
+          },
+          18000
+        );
+
+        if (!res.ok) {
+          throw new Error(`HTTP ${res.status}`);
+        }
+
+        const md = await res.text();
+        if (!md || md.trim().length < 80) {
+          throw new Error('Empty reader fallback');
+        }
+
+        const lines = md
+          .replace(/^Title:.*$/m, '')
+          .replace(/^URL Source:.*$/m, '')
+          .replace(/^Markdown Content:\s*/m, '')
+          .split('\n')
+          .map((l) => l.trim())
+          .filter(Boolean);
+
+        if (lines.length === 0) {
+          throw new Error('No readable content');
+        }
+
+        const blocksHtml = lines.slice(0, 90).map((line) => {
+          if (line.startsWith('# ')) {
+            return `<h1>${escapeHtml(line.slice(2))}</h1>`;
+          }
+          if (line.startsWith('## ')) {
+            return `<h2>${escapeHtml(line.slice(3))}</h2>`;
+          }
+          if (line.startsWith('### ')) {
+            return `<h3>${escapeHtml(line.slice(4))}</h3>`;
+          }
+          const imgMatch = line.match(/^!\[([^\]]*)\]\((https?:\/\/[^)\s]+)\)/);
+          if (imgMatch) {
+            return `<img src="${escapeHtml(imgMatch[2])}" alt="${escapeHtml(imgMatch[1])}" referrerpolicy="no-referrer" />`;
+          }
+          const linkMatch = line.match(/^[-*]?\s*\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/);
+          if (linkMatch) {
+            return `<a href="${escapeHtml(linkMatch[2])}">${escapeHtml(linkMatch[1])}</a>`;
+          }
+          return `<p>${escapeHtml(line.replace(/\[([^\]]+)\]\([^)]+\)/g, '$1'))}</p>`;
+        }).join('\n');
+
+        const html = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <style>
+    body {
+      margin: 0;
+      padding: 64px 28px 36px;
+      background: #0b0d17;
+      color: #f1f5f9;
+      font-family: Inter, system-ui, sans-serif;
+      line-height: 1.6;
+      max-width: 860px;
+      margin-left: auto;
+      margin-right: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    h1 { font-size: 26px; font-weight: 800; margin: 0 0 4px; color: #ffffff; }
+    h2 { font-size: 20px; font-weight: 700; margin: 8px 0 2px; color: #e2e8f0; }
+    h3 { font-size: 16px; font-weight: 600; margin: 6px 0 2px; color: #cbd5e1; }
+    p { margin: 0; font-size: 14px; color: #cbd5e1; }
+    a {
+      display: inline-block;
+      width: fit-content;
+      color: #7dd3fc;
+      text-decoration: none;
+      background: rgba(56, 189, 248, 0.1);
+      border: 1px solid rgba(56, 189, 248, 0.25);
+      padding: 6px 12px;
+      border-radius: 10px;
+      font-size: 13px;
+    }
+    img { max-width: 100%; max-height: 260px; border-radius: 12px; object-fit: cover; }
+  </style>
+</head>
+<body>${blocksHtml}</body>
+</html>`;
+
+        return {
+          html,
+          resolvedUrl: resolvedBaseUrl || targetUrl
+        };
+      }
+
+      async function fetchDirectNoProxy(targetUrl) {
+        const res = await fetchWithTimeout(targetUrl, { method: 'GET' }, 10000);
+        if (!res.ok) {
+          throw new Error(`HTTP ${res.status}`);
+        }
+        const html = await res.text();
+        if (!isValidHydratedHtml(html)) {
+          throw new Error('Invalid direct HTML');
+        }
+        return {
+          html,
+          resolvedUrl: res.url || targetUrl
+        };
+      }
+
+      async function fetchActualSiteHtml(target) {
+        if (target.isSearch) {
+          const q = encodeURIComponent(target.query);
+          const searchUrls = [
+            `https://duckduckgo.com/?q=${q}`,
+            `https://www.bing.com/search?q=${q}`
+          ];
+          const attempts = searchUrls.map((u) => fetchHydratedFromJina(u, u));
+          if (typeof Promise.any === 'function') {
+            return Promise.any(attempts);
+          }
+          for (let i = 0; i < attempts.length; i++) {
+            try {
+              return await attempts[i];
+            } catch (_) {}
+          }
+          throw new Error('Search could not be loaded');
+        }
+
+        try {
+          return await fetchHydratedFromJina(target.url, target.baseUrl);
+        } catch (primaryErr) {
+          // Retry with browser wait-for-body rendering for client-heavy SPAs
+          try {
+            return await fetchHydratedFromJina(target.url, target.baseUrl, {
+              'X-Wait-For-Selector': 'body',
+              'X-Timeout': '20'
+            });
+          } catch (_) {}
+
+          // Quiet direct fetch fallback if the target site serves open CORS headers
+          try {
+            return await fetchDirectNoProxy(target.baseUrl);
+          } catch (_) {}
+
+          // Reader snapshot fallback so JS-locked sites render clean interactive blocks instead of a white screen
+          try {
+            return await fetchReaderMarkdownAsHtml(target.url, target.baseUrl);
+          } catch (_) {
+            throw primaryErr;
+          }
+        }
+      }
+
+      function buildNetworkErrorHtml(displayTarget, errorMessage) {
+        return `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <style>
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: #07080f;
+      color: #f8fafc;
+      font-family: Inter, system-ui, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 32px;
+      text-align: center;
+      gap: 14px;
+    }
+    h1 {
+      margin: 0;
+      font-size: 22px;
+      font-weight: 700;
+    }
+    p {
+      margin: 0;
+      max-width: 460px;
+      color: #94a3b8;
+      font-size: 14px;
+      line-height: 1.55;
+    }
+  </style>
+</head>
+<body>
+  <h1>Could not reach ${escapeHtml(displayTarget)}</h1>
+  <p>The page could not be rendered (${escapeHtml(errorMessage)}). Check the URL or try another site above.</p>
+</body>
+</html>`;
+      }
+
+      function resolveCssImportsAndUrls(cssText, baseUrl) {
+        if (!cssText) return cssText;
+        let updated = cssText.replace(/url\(\s*(["']?)\/\//gi, 'url($1https://');
+        updated = updated.replace(/@import\s+(?:url\(\s*)?(["']?)([^"');\s]+)\1\s*\)?/gi, (match, quote, importHref) => {
+          try {
+            const resolvedHref = new URL(importHref, baseUrl).href;
+            return `@import url("${resolvedHref}")`;
+          } catch (_) {
+            return match;
+          }
+        });
+        return updated;
+      }
+
+      function prepareHtmlForSandbox(rawHtml, baseUrl, mountId) {
+        // Strip active scripts, CSP/frame restrictions, meta refreshes, and existing base tags
+        let cleaned = rawHtml
+          .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+          .replace(/<meta[^>]+http-equiv\s*=\s*["']?(?:Content-Security-Policy|X-Frame-Options|refresh)["']?[^>]*>/gi, '')
+          .replace(/<base\b[^>]*>/gi, '');
+
+        // Only unwrap <noscript> blocks that contain visual media/styles; strip JS-error warning banners
+        cleaned = cleaned.replace(/<noscript\b[^>]*>([\s\S]*?)<\/noscript>/gi, (match, inner) => {
+          if (/<(img|picture|source|svg|link|style)\b/i.test(inner)) {
+            return inner;
+          }
+          return '';
+        });
+
+        // Resolve @import rules and protocol-relative URLs inside inline <style> blocks
+        cleaned = cleaned.replace(/<style\b([^>]*)>([\s\S]*?)<\/style>/gi, (match, attrs, cssBody) => {
+          return `<style${attrs}>${resolveCssImportsAndUrls(cssBody, baseUrl)}</style>`;
+        });
+
+        // Strip integrity and crossorigin attributes on <link> stylesheets so external CSS never fails SRI/CORS checks
+        cleaned = cleaned.replace(/<link\b([^>]*)>/gi, (match, attrs) => {
+          const cleanAttrs = attrs
+            .replace(/\s+\b(?:integrity|crossorigin)\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)/gi, '');
+          return `<link${cleanAttrs}>`;
+        });
+
+        // Convert protocol-relative URLs (//...) to https:// so assets resolve cleanly
+        cleaned = cleaned
+          .replace(/\b(src|href|action|poster|srcset)\s*=\s*(["'])\/\//gi, '$1=$2https://')
+          .replace(/url\(\s*(["']?)\/\//gi, 'url($1https://');
+
+        // Promote lazy-loaded <source> srcset attributes
+        cleaned = cleaned.replace(/<source\b([^>]*)>/gi, (match, attrs) => {
+          let updatedAttrs = attrs;
+          const dataSrcsetMatch = updatedAttrs.match(/\b(?:data-srcset|data-lazy-srcset)\s*=\s*["']([^"']+)["']/i);
+          if (dataSrcsetMatch && !/\bsrcset\s*=/i.test(updatedAttrs)) {
+            updatedAttrs += ` srcset="${dataSrcsetMatch[1]}"`;
+          }
+          return `<source${updatedAttrs}>`;
+        });
+
+        // Promote lazy-loaded images and force eager loading so visuals appear immediately
+        cleaned = cleaned.replace(/<img\b([^>]*)>/gi, (match, attrs) => {
+          let updatedAttrs = attrs
+            .replace(/\s+\b(?:integrity|crossorigin|loading)\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)/gi, '');
+          const dataSrcMatch = updatedAttrs.match(/\b(?:data-src|data-lazy-src|data-original)\s*=\s*["']([^"']+)["']/i);
+          if (dataSrcMatch) {
+            const realSrc = dataSrcMatch[1].startsWith('//') ? `https:${dataSrcMatch[1]}` : dataSrcMatch[1];
+            if (!/\bsrc\s*=/i.test(updatedAttrs)) {
+              updatedAttrs += ` src="${realSrc}"`;
+            } else {
+              updatedAttrs = updatedAttrs.replace(/\bsrc\s*=\s*["'](?:data:image[^"']*|about:blank|)["']/i, `src="${realSrc}"`);
+            }
+          }
+          const dataSrcsetMatch = updatedAttrs.match(/\b(?:data-srcset|data-lazy-srcset)\s*=\s*["']([^"']+)["']/i);
+          if (dataSrcsetMatch && !/\bsrcset\s*=/i.test(updatedAttrs)) {
+            updatedAttrs += ` srcset="${dataSrcsetMatch[1]}"`;
+          }
+          if (!/\breferrerpolicy\s*=/i.test(updatedAttrs)) {
+            updatedAttrs += ' referrerpolicy="no-referrer"';
+          }
+          return `<img loading="eager"${updatedAttrs}>`;
+        });
+
+        // Promote lazy-loaded background images on hero/card containers
+        cleaned = cleaned.replace(/\b(?:data-bg|data-background|data-background-image)\s*=\s*["']([^"']+)["']/gi, (match, bgUrl) => {
+          const resolvedBg = bgUrl.startsWith('//') ? `https:${bgUrl}` : bgUrl;
+          return `style="background-image: url('${resolvedBg}')"`;
+        });
+
+        const injectedHeadTags = `
+          <meta name="wgz-mount-id" content="${escapeHtml(String(mountId))}" />
+          <base href="${escapeHtml(baseUrl)}" />
+          <style>
+            html, body {
+              overflow: hidden !important;
+              margin: 0;
+            }
+            /* Reveal elements hidden by JS scroll/hydration libraries (AOS, Framer Motion, Webflow, GSAP) */
+            [data-aos],
+            [data-w-id],
+            [data-animate],
+            [data-framer-appear-id],
+            .wow,
+            .fade-in,
+            [style*="opacity: 0"],
+            [style*="opacity:0"] {
+              opacity: 1 !important;
+              visibility: visible !important;
+            }
+          </style>
+        `;
+
+        if (/<head[^>]*>/i.test(cleaned)) {
+          return cleaned.replace(/<head([^>]*)>/i, `<head$1>${injectedHeadTags}`);
+        }
+        return `<!DOCTYPE html><html><head>${injectedHeadTags}</head><body>${cleaned}</body></html>`;
+      }
+
+      function waitForDocumentAssets(doc, maxWaitMs) {
+        return new Promise((resolve) => {
+          if (!doc) {
+            resolve();
+            return;
+          }
+
+          let settled = false;
+          const finish = () => {
+            if (settled) return;
+            settled = true;
+            clearTimeout(hardTimer);
+            resolve();
+          };
+
+          const hardTimer = setTimeout(finish, maxWaitMs);
+
+          const styleLinks = Array.from(doc.querySelectorAll('link[rel~="stylesheet"]'));
+          const pendingPromises = styleLinks.map((link) => {
+            if (link.sheet) return Promise.resolve();
+            return new Promise((res) => {
+              link.addEventListener('load', res, { once: true });
+              link.addEventListener('error', res, { once: true });
+            });
+          });
+
+          if (doc.fonts && doc.fonts.ready) {
+            pendingPromises.push(
+              Promise.race([
+                doc.fonts.ready,
+                new Promise((res) => setTimeout(res, 800))
+              ])
+            );
+          }
+
+          if (pendingPromises.length === 0) {
+            finish();
+            return;
+          }
+
+          Promise.all(pendingPromises).then(finish).catch(finish);
+        });
+      }
+
+      function setLoadingState(isLoading) {
+        if (isLoading) {
+          landingSpinner.classList.remove('hidden');
+          topSpinner.classList.remove('hidden');
+          minimizeBarBtn.classList.add('hidden');
+        } else {
+          landingSpinner.classList.add('hidden');
+          topSpinner.classList.add('hidden');
+          minimizeBarBtn.classList.remove('hidden');
+        }
+      }
+
+      function mountHtmlInSandbox(html, baseUrl) {
+        const currentGen = ++mountGeneration;
+        clearPhysicsWorld();
+        applyDeviceProfileLayout();
+
+        const preparedHtml = prepareHtmlForSandbox(html, baseUrl, currentGen);
+        lastMountedHtml = html;
+        lastMountedBaseUrl = baseUrl;
+
+        pageFrame.style.display = 'block';
+        pageFrame.style.opacity = '0';
+
+        // Assign srcdoc so every subsequent page load parses cleanly without stale base/document.write state
+        pageFrame.srcdoc = preparedHtml;
+
+        let readinessAttempts = 0;
+        async function finalizeSandboxMount() {
+          if (currentGen !== mountGeneration) return;
+
+          const doc = pageFrame.contentDocument;
+          const win = pageFrame.contentWindow;
+          const marker = doc ? doc.querySelector('meta[name="wgz-mount-id"]') : null;
+          const isCurrentDocParsed = marker && marker.getAttribute('content') === String(currentGen) && doc.body;
+
+          if (!isCurrentDocParsed && readinessAttempts < 60) {
+            readinessAttempts++;
+            requestAnimationFrame(finalizeSandboxMount);
+            return;
+          }
+
+          if (doc && win && doc.body) {
+            // Wait for external stylesheets & fonts so element hitboxes match the site's true styled layout
+            await waitForDocumentAssets(doc, 2200);
+            if (currentGen !== mountGeneration) return;
+
+            const bodyBg = win.getComputedStyle(doc.body).backgroundColor;
+            const htmlBg = doc.documentElement ? win.getComputedStyle(doc.documentElement).backgroundColor : '';
+            if (bodyBg && bodyBg !== 'rgba(0, 0, 0, 0)' && bodyBg !== 'transparent') {
+              pageFrame.style.backgroundColor = bodyBg;
+            } else if (htmlBg && htmlBg !== 'rgba(0, 0, 0, 0)' && htmlBg !== 'transparent') {
+              pageFrame.style.backgroundColor = htmlBg;
+            } else {
+              pageFrame.style.backgroundColor = '#ffffff';
+            }
+
+            const elements = collectInteractiveElements(doc, win);
+            for (let i = 0; i < elements.length; i++) {
+              createPhysicsItemForElement(elements[i].el, elements[i].exactBox);
+            }
+
+            // Prevent blank white screens if a site rendered zero visible elements or media
+            const bodyTextLen = (doc.body.innerText || '').trim().length;
+            const hasBodyMedia = !!doc.body.querySelector('img, svg, canvas, video, input, button');
+            if (elements.length === 0 && bodyTextLen < 20 && !hasBodyMedia) {
+              const fallbackHtml = buildNetworkErrorHtml(
+                currentDisplayText || baseUrl,
+                'This site requires client-side execution that cannot be displayed'
+              );
+              mountHtmlInSandbox(fallbackHtml, baseUrl);
+              return;
+            }
+
+            // Re-sync resting hitboxes after images settle so late image loads never shift hitboxes
+            setTimeout(() => {
+              if (currentGen === mountGeneration) syncAllRestingHitboxes();
+            }, 600);
+            setTimeout(() => {
+              if (currentGen === mountGeneration) syncAllRestingHitboxes();
+            }, 1600);
+          }
+
+          hasLaunchedPage = true;
+          isResetting = false;
+          setLoadingState(false);
+
+          landingOverlay.classList.add('is-hidden');
+          pageFrame.style.opacity = '1';
+          interactionLayer.style.display = 'block';
+
+          if (!isBarMinimized) {
+            topUrlBar.classList.remove('is-hidden');
+            expandBarBtn.classList.add('is-hidden');
+          } else {
+            topUrlBar.classList.add('is-minimized');
+            expandBarBtn.classList.remove('is-hidden');
+          }
+        }
+
+        requestAnimationFrame(() => {
+          requestAnimationFrame(finalizeSandboxMount);
+        });
+      }
+
+      async function loadExternalUrl(rawInput) {
+        const target = normalizeInputToTarget(rawInput);
+        if (!target) return;
+
+        currentUrl = target.url;
+        currentDisplayText = target.displayText;
+        landingInput.value = target.displayText;
+        urlInput.value = target.displayText;
+        landingInput.blur();
+        urlInput.blur();
+
+        setLoadingState(true);
+
+        try {
+          const { html, resolvedUrl } = await fetchActualSiteHtml(target);
+          mountHtmlInSandbox(html, resolvedUrl);
+        } catch (err) {
+          const errorHtml = buildNetworkErrorHtml(target.displayText, err.message || 'Network error');
+          mountHtmlInSandbox(errorHtml, target.baseUrl);
+        }
+      }
+
+      function resetWorkspace() {
+        if (isResetting || !lastMountedHtml) return;
+        isResetting = true;
+        mountHtmlInSandbox(lastMountedHtml, lastMountedBaseUrl);
+      }
+
+      // ==========================================
+      // 8. SWIRLING COSMIC NEBULA & MAIN LOOP
+      // ==========================================
+      function resizeSwirlCanvas() {
+        const dpr = Math.min(window.devicePixelRatio || 1, 2);
+        swirlCanvas.width = Math.floor(window.innerWidth * dpr);
+        swirlCanvas.height = Math.floor(window.innerHeight * dpr);
+        swirlCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      }
+
+      function renderSwirlFrame(timeSec) {
+        const w = window.innerWidth;
+        const h = window.innerHeight;
+        swirlCtx.fillStyle = '#020205';
+        swirlCtx.fillRect(0, 0, w, h);
+
+        const cx = w * 0.5;
+        const cy = h * 0.5;
+        const maxR = Math.hypot(cx, cy);
+
+        const blobs = [
+          { angle: timeSec * 0.14, dist: maxR * 0.18, r: maxR * 0.62, color: 'rgba(56, 48, 128, 0.22)' },
+          { angle: timeSec * -0.11 + 2.1, dist: maxR * 0.22, r: maxR * 0.55, color: 'rgba(14, 92, 138, 0.18)' },
+          { angle: timeSec * 0.09 + 4.2, dist: maxR * 0.15, r: maxR * 0.48, color: 'rgba(88, 28, 115, 0.16)' }
+        ];
+
+        for (let i = 0; i < blobs.length; i++) {
+          const b = blobs[i];
+          const bx = cx + Math.cos(b.angle) * b.dist;
+          const by = cy + Math.sin(b.angle) * b.dist;
+          const grad = swirlCtx.createRadialGradient(bx, by, 0, bx, by, b.r);
+          grad.addColorStop(0, b.color);
+          grad.addColorStop(1, 'rgba(2, 2, 5, 0)');
+          swirlCtx.fillStyle = grad;
+          swirlCtx.fillRect(0, 0, w, h);
+        }
+      }
+
+      const FIXED_STEP_MS = 1000 / 60;
+      const SUB_STEPS = 4;
+      const SUB_STEP_MS = FIXED_STEP_MS / SUB_STEPS;
+      let lastFrameTime = performance.now();
+      let physicsAccumulator = 0;
+
+      function mainLoop(now) {
+        const dt = Math.min(50, Math.max(0, now - lastFrameTime));
+        lastFrameTime = now;
+
+        // Render cosmic background only while landing screen is visible
+        if (!hasLaunchedPage) {
+          renderSwirlFrame(now * 0.001);
+        }
+
+        physicsAccumulator += dt;
+        let framesToSimulate = 0;
+        while (physicsAccumulator >= FIXED_STEP_MS && framesToSimulate < 2) {
+          for (let s = 0; s < SUB_STEPS; s++) {
+            flushPendingDetachments();
+            Engine.update(engine, SUB_STEP_MS);
+          }
+          enforceViewportContainmentAndSpeedCap();
+          physicsAccumulator -= FIXED_STEP_MS;
+          framesToSimulate++;
+        }
+
+        for (let i = 0; i < pageItems.length; i++) {
+          const item = pageItems[i];
+          if (!item.detached) continue;
+
+          const body = item.body;
+          const renderX = (body.position.x - frameOffsetX) - item.width * 0.5;
+          const renderY = body.position.y - item.height * 0.5;
+          const angle = body.angle;
+
+          if (
+            Math.abs(renderX - item.lastRenderX) > 0.04 ||
+            Math.abs(renderY - item.lastRenderY) > 0.04 ||
+            Math.abs(angle - item.lastRenderAngle) > 0.0004
+          ) {
+            item.el.style.transform = `translate3d(${renderX.toFixed(2)}px, ${renderY.toFixed(2)}px, 0) rotate(${angle.toFixed(4)}rad)`;
+            item.lastRenderX = renderX;
+            item.lastRenderY = renderY;
+            item.lastRenderAngle = angle;
+          }
+        }
+
+        requestAnimationFrame(mainLoop);
+      }
+
+      // ==========================================
+      // 9. UI FORM & RESIZE EVENT LISTENERS
+      // ==========================================
+      landingForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        loadExternalUrl(landingInput.value);
+      });
+
+      urlForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        loadExternalUrl(urlInput.value);
+      });
+
+      topResetBtn.addEventListener('click', () => {
+        resetWorkspace();
+      });
+
+      minimizeBarBtn.addEventListener('click', () => {
+        isBarMinimized = true;
+        topUrlBar.classList.add('is-minimized');
+        expandBarBtn.classList.remove('is-hidden');
+      });
+
+      expandBarBtn.addEventListener('click', () => {
+        isBarMinimized = false;
+        topUrlBar.classList.remove('is-minimized');
+        topUrlBar.classList.remove('is-hidden');
+        expandBarBtn.classList.add('is-hidden');
+      });
+
+      window.addEventListener('resize', () => {
+        resizeSwirlCanvas();
+        deviceMode = detectDeviceMode();
+        applyDeviceProfileLayout();
+        createBoundaryWalls();
+      });
+
+      // Initialize canvas, walls & loop
+      resizeSwirlCanvas();
+      applyDeviceProfileLayout();
+      createBoundaryWalls();
+      requestAnimationFrame(mainLoop);
+    })();
+  </script>
+</body>
+</html>
